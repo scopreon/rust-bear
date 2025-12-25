@@ -1,0 +1,14 @@
+version: "3.9"
+
+services:
+  dev:
+    build: .
+    container_name: linux-dev
+    volumes:
+      - .:/workspace
+    stdin_open: true
+    tty: true
+    security_opt:
+      - seccomp=unconfined
+    cap_add:
+      - SYS_PTRACE
