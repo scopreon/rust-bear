@@ -2,11 +2,27 @@
 name = "rust-bear"
 version = "0.1.0"
 edition = "2021"
-
+build = "build.rs"
+autobins = false
 
 [dependencies]
 libc = "0.2"
+prost = "0.14.1"
+# protobuf-src = "2.1.1"
 
 [lib]
 crate-type = ["cdylib"]
 bench = false
+path = "src/lib/lib.rs"
+
+[[bin]]
+name = "server"
+path = "src/server/server.rs"
+
+# [[bin]]
+# name = "client"
+# path = "client.rs"
+
+[build-dependencies]
+prost-build = "0.14.1"
+protoc-bin-vendored = "3"

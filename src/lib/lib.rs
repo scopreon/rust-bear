@@ -1,13 +1,20 @@
-use libc::STDERR_FILENO;
-use libc::{c_char, c_int, c_void, dlsym, RTLD_NEXT};
+use libc::{c_char, c_int, dlsym, RTLD_NEXT};
 use std::env;
 use std::ffi::CStr;
 use std::fmt;
-use std::fs;
-use std::io;
-use std::os::unix::io::AsRawFd;
+use std::io::{self, Write};
+use std::os::unix::net::UnixStream;
 
 type ExecFn = fn(path: *const c_char, argv: *const *mut c_char, envp: *const *mut c_char) -> c_int;
+
+pub mod minibear {
+    pub mod schema {
+        include!(concat!(env!("OUT_DIR"), "/minibear.schema.rs"));
+    }
+}
+
+use minibear::schema;
+use prost::Message;
 
 #[no_mangle]
 pub unsafe extern "C" fn execve(
@@ -15,31 +22,26 @@ pub unsafe extern "C" fn execve(
     argv: *const *mut c_char,
     envp: *const *mut c_char,
 ) -> c_int {
-    let file = match get_outfile() {
-        Ok(file) => file,
+    let val = dlsym(RTLD_NEXT, "execve\0".as_ptr() as *const c_char);
+    let function: ExecFn = std::mem::transmute(val);
+
+    let com = Command::new(argv);
+    let mut connecton = match get_uds_connection() {
+        Ok(con) => con,
         Err(_) => {
-            return -1;
+            return function(path, argv, envp);
         }
     };
-    let com = Command::new(argv);
-    let msg = format!("Command: {}\n", com);
-
-    // libc::write(STDERR_FILENO, msg2.as_ptr() as *const c_void, msg2.len());
-    libc::write(file.as_raw_fd(), msg.as_ptr() as *const c_void, msg.len());
-    let val = dlsym(RTLD_NEXT, "execve\0".as_ptr() as *const c_char);
-
-    let function: ExecFn = std::mem::transmute(val);
+    let val: schema::SearchRequest = schema::SearchRequest { args: com.argv };
+    let _ = connecton.write_all(&val.encode_to_vec()[..]);
     function(path, argv, envp)
 }
 
-fn get_outfile() -> Result<fs::File, io::Error> {
-    let filename = env::var("_RUST_BEAR_OUT")
-        .map_err(|_| io::Error::new(io::ErrorKind::NotFound, "ERROR env var not set"))?;
-    fs::OpenOptions::new()
-        .read(true)
-        .append(true)
-        .create(true)
-        .open(filename)
+fn get_uds_connection() -> io::Result<UnixStream> {
+    let path =
+        env::var("_MINIBEAR_SOCKET").map_err(|e| io::Error::new(io::ErrorKind::NotFound, e))?;
+
+    UnixStream::connect(path)
 }
 
 struct Command {

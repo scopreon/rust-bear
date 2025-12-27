@@ -1,0 +1,7 @@
+syntax = "proto3";
+
+package minibear.schema;
+
+message SearchRequest {
+    repeated string args = 1;
+}
