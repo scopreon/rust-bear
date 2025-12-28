@@ -1,8 +1,9 @@
-use libc::{c_char, c_int, dlsym, RTLD_NEXT};
+use libc::{c_char, c_int, dlsym, fcntl, FD_CLOEXEC, F_SETFD, RTLD_NEXT};
 use std::env;
 use std::ffi::CStr;
 use std::fmt;
 use std::io::{self, Write};
+use std::os::unix::io::AsRawFd;
 use std::os::unix::net::UnixStream;
 
 type ExecFn = fn(path: *const c_char, argv: *const *mut c_char, envp: *const *mut c_char) -> c_int;
@@ -17,12 +18,12 @@ use minibear::schema;
 use prost::Message;
 
 #[no_mangle]
-pub unsafe extern "C" fn execve(
+unsafe extern "C" fn execve(
     path: *const c_char,
     argv: *const *mut c_char,
     envp: *const *mut c_char,
 ) -> c_int {
-    let val = dlsym(RTLD_NEXT, "execve\0".as_ptr() as *const c_char);
+    let val = dlsym(RTLD_NEXT, b"execve\0".as_ptr() as *const c_char);
     let function: ExecFn = std::mem::transmute(val);
 
     let com = Command::new(argv);
@@ -43,6 +44,7 @@ pub unsafe extern "C" fn execve(
     };
 
     let _ = connecton.write_all(&val.encode_to_vec()[..]);
+    let _ = connecton.shutdown(std::net::Shutdown::Both);
     function(path, argv, envp)
 }
 
