@@ -1,13 +1,12 @@
 mod helpers;
 
 use serde::{Deserialize, Serialize};
-use serde_json::Result;
-use std::io::{self, Read, Write};
+use std::io::Read;
 use std::os::unix::net::UnixListener;
 use std::os::unix::net::UnixStream;
-use std::process::{Command, Stdio};
-use std::sync::mpsc::{self, Receiver, Sender};
-use std::thread::{self, sleep, sleep_ms};
+use std::process::Command;
+use std::sync::mpsc::{self, Receiver};
+use std::thread::{self, sleep};
 use std::time::Duration;
 use std::{env, fs};
 
@@ -17,13 +16,13 @@ pub mod minibear {
     }
 }
 
-const header: &[&str] = &[".cpp", ".cxx", ".cc", ".c"];
+const SOURCE_HEADERS: &[&str] = &[".cpp", ".cxx", ".cc", ".c"];
 
 fn extract_source(command: &schema::SearchRequest) -> Vec<&str> {
     let mut files: Vec<&str> = Vec::new();
     let mut iter = command.args.iter();
     while let Some(arg) = iter.next() {
-        for suffix in header {
+        for suffix in SOURCE_HEADERS {
             if arg.ends_with(suffix) {
                 files.push(arg.as_str());
             }
@@ -97,7 +96,7 @@ fn main() -> std::io::Result<()> {
         .env("_MINIBEAR_SOCKET", "/workspace/mysock.sock")
         .status()?;
     sleep(Duration::from_secs(2));
-    tx.send(true);
+    let _ = tx.send(true);
     // let mut compile_commands: Vec<CompileCommandsEntry> = Vec::new();
     let mut compile_commands: Vec<CompileCommandsEntry> = Vec::new();
 

@@ -1,9 +1,8 @@
-use libc::{c_char, c_int, dlsym, fcntl, FD_CLOEXEC, F_SETFD, RTLD_NEXT};
+use libc::{c_char, c_int, dlsym, RTLD_NEXT};
 use std::env;
 use std::ffi::CStr;
 use std::fmt;
 use std::io::{self, Write};
-use std::os::unix::io::AsRawFd;
 use std::os::unix::net::UnixStream;
 
 type ExecFn = fn(path: *const c_char, argv: *const *mut c_char, envp: *const *mut c_char) -> c_int;
