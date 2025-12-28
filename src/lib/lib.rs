@@ -32,7 +32,16 @@ pub unsafe extern "C" fn execve(
             return function(path, argv, envp);
         }
     };
-    let val: schema::SearchRequest = schema::SearchRequest { args: com.argv };
+    let current_path = match env::current_dir() {
+        Ok(path) => path,
+        Err(_) => return function(path, argv, envp),
+    };
+
+    let val: schema::SearchRequest = schema::SearchRequest {
+        args: com.argv,
+        path: current_path.to_string_lossy().to_string(),
+    };
+
     let _ = connecton.write_all(&val.encode_to_vec()[..]);
     function(path, argv, envp)
 }
