@@ -344,13 +344,31 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "7a2d987857b319362043e95f5353c0535c1f58eec5336fdfcf626430af7def58"
 
 [[package]]
-name = "rust-bear"
+name = "rust-bear-lib"
 version = "0.1.0"
 dependencies = [
  "libc",
  "prost",
+ "rust-bear-proto",
+ "serde",
+ "serde_json",
+]
+
+[[package]]
+name = "rust-bear-proto"
+version = "0.1.0"
+dependencies = [
+ "prost",
  "prost-build",
  "protoc-bin-vendored",
+]
+
+[[package]]
+name = "rust-bear-server"
+version = "0.1.0"
+dependencies = [
+ "prost",
+ "rust-bear-proto",
  "serde",
  "serde_json",
 ]

@@ -1,0 +1,18 @@
+[package]
+name = "rust-bear-proto"
+version = "0.1.0"
+edition = "2021"
+build = "build.rs"
+autobins = false
+
+[dependencies]
+prost = "0.14.1"
+# protobuf-src = "2.1.1"
+
+[lib]
+bench = false
+path = "lib.rs"
+
+[build-dependencies]
+prost-build = "0.14.1"
+protoc-bin-vendored = "3"

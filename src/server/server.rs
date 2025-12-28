@@ -1,5 +1,7 @@
 mod helpers;
 
+use prost::Message;
+use rust_bear_proto::minibear::schema;
 use serde::{Deserialize, Serialize};
 use std::io::Read;
 use std::os::unix::net::UnixListener;
@@ -9,13 +11,6 @@ use std::sync::mpsc::{self, Receiver};
 use std::thread::{self, sleep};
 use std::time::Duration;
 use std::{env, fs};
-
-pub mod minibear {
-    pub mod schema {
-        include!(concat!(env!("OUT_DIR"), "/minibear.schema.rs"));
-    }
-}
-
 const SOURCE_HEADERS: &[&str] = &[".cpp", ".cxx", ".cc", ".c"];
 
 fn extract_source(command: &schema::SearchRequest) -> Vec<&str> {
@@ -53,9 +48,6 @@ mod tests {
         println!("{:?}", ret);
     }
 }
-
-use minibear::schema;
-use prost::Message;
 
 fn handle_client(mut stream: UnixStream) -> schema::SearchRequest {
     let mut buf = Vec::new();
