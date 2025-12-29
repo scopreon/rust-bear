@@ -84,7 +84,7 @@ fn main() -> std::io::Result<()> {
         // .stdin(Stdio::null())
         // .stdout(Stdio::null())
         // .stderr(Stdio::null())
-        .env("LD_PRELOAD", "/workspace/target/debug/librust_bear.so")
+        .env("LD_PRELOAD", "/workspace/target/debug/librust_bear_lib.so")
         .env("_MINIBEAR_SOCKET", "/workspace/mysock.sock")
         .status()?;
     sleep(Duration::from_secs(2));

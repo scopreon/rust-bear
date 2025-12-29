@@ -20,7 +20,7 @@ macro_rules! intercept {
         unsafe extern "C" fn $name( $( $arg : $argty ),* ) -> $ret{
             type Type =
             fn($( $argty ),*) -> $ret;
-                let val = dlsym(RTLD_NEXT, b"posix_spawn\0".as_ptr() as *const c_char);
+                let val = dlsym(RTLD_NEXT, format!("{}\0",stringify!($name)).as_bytes().as_ptr() as *const c_char);
             let function: Type = std::mem::transmute(val);
 
             let com = Command::new($argv);
