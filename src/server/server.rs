@@ -1,11 +1,11 @@
-mod helpers;
-
 use prost::Message;
 use rust_bear_proto::minibear::schema;
 use serde::{Deserialize, Serialize};
 use std::io::Read;
+use std::io::Write;
 use std::os::unix::net::UnixListener;
 use std::os::unix::net::UnixStream;
+use std::path::Path;
 use std::process::Command;
 use std::sync::mpsc::{self, Receiver};
 use std::thread::{self, sleep};
@@ -28,7 +28,6 @@ fn extract_source(command: &schema::SearchRequest) -> Vec<&str> {
 
 #[cfg(test)]
 mod tests {
-    // Note this useful idiom: importing names from outer (for mod tests) scope.
     use super::*;
 
     #[test]
@@ -94,85 +93,64 @@ fn main() -> std::io::Result<()> {
 
     for result in handle.join().expect("msg")? {
         for file in extract_source(&result) {
+            let directory_path = Path::new(&result.path);
+            let file_path = Path::new(file);
+
+            let (final_dir, filename) = if file_path.is_absolute() {
+                (
+                    file_path
+                        .parent()
+                        .expect("Dodgy path")
+                        .to_string_lossy()
+                        .to_string(),
+                    file_path
+                        .file_name()
+                        .expect("Dodgy path")
+                        .to_string_lossy()
+                        .to_string(),
+                )
+            } else {
+                (
+                    directory_path
+                        .join(file_path.parent().expect("Dodgy path"))
+                        .to_string_lossy()
+                        .to_string(),
+                    file_path
+                        .file_name()
+                        .expect("Dodgy path")
+                        .to_string_lossy()
+                        .to_string(),
+                )
+            };
+
             compile_commands.push(CompileCommandsEntry {
-                directory: result.path.clone(),
+                directory: final_dir,
                 command: result.args.join(" "),
-                file: file.to_string(),
+                file: filename,
             });
         }
     }
     let serialized = serde_json::to_string_pretty(&compile_commands).unwrap();
+    let mut outfile = fs::OpenOptions::new()
+        .write(true)
+        .create(true)
+        .open("compile_commands.json")?;
 
-    // Prints serialized = {"x":1,"y":2}
+    let _ = outfile.write_all(serialized.as_bytes());
     println!("serialized = {}", serialized);
     Ok(())
-    // let path = "/Users/saulcoops/Programming/rust-bear/mysoc.sock";
-    // let path = env::var("_MINIBEAR_SOCKET").expect("expecteed");
-
-    // let _ = fs::remove_file(&path);
-    // let listener = UnixListener::bind(&path)?;
-    // // let mut i = 0;
-
-    // let mut threads: Vec<thread::JoinHandle<schema::SearchRequest>> = Vec::new();
-    // let _ = listener.set_nonblocking(true);
-    // loop {
-    //     sleep(Duration::from_millis(10));
-    //     println!("Looking");
-    //     match listener.accept() {
-    //         Ok(stream) => {
-    //             threads.push(thread::spawn(|| handle_client(stream.0)));
-    //         }
-    //         Err(_) => continue,
-    //     }
-    // }
-    // // for stream in listener.incoming() {
-    // //     i += 1;
-    // //     if i == 8 {
-    // //         break;
-    // //     }
-    // //     match stream {
-    // //         Ok(stream) => {
-    // //             threads.push(thread::spawn(|| handle_client(stream)));
-    // //         }
-    // //         Err(err) => {
-    // //             break;
-    // //         }
-    // //     }
-    // // }
-    // let _results: Vec<schema::SearchRequest> = threads
-    //     .into_iter()
-    //     .map(|t| t.join().expect("Thread panicked"))
-    //     .collect();
-
-    // let mut compile_commands: Vec<CompileCommandsEntry> = Vec::new();
-    // for result in _results {
-    //     for file in extract_source(&result) {
-    //         compile_commands.push(CompileCommandsEntry {
-    //             directory: result.path.clone(),
-    //             command: result.args.join(" "),
-    //             file: file.to_string(),
-    //         });
-    //     }
-    // }
-    // let serialized = serde_json::to_string_pretty(&compile_commands).unwrap();
-
-    // // Prints serialized = {"x":1,"y":2}
-    // println!("serialized = {}", serialized);
 }
 
 fn server(reciever: Receiver<bool>) -> std::io::Result<Vec<schema::SearchRequest>> {
-    // let path = "/Users/saulcoops/Programming/rust-bear/mysoc.sock";
     let path = env::var("_MINIBEAR_SOCKET").expect("expecteed");
 
     let _ = fs::remove_file(&path);
     let listener = UnixListener::bind(&path)?;
-    // let mut i = 0;
 
     let mut threads: Vec<thread::JoinHandle<schema::SearchRequest>> = Vec::new();
     let _ = listener.set_nonblocking(true);
     loop {
         sleep(Duration::from_millis(10));
-        // println!("here");
         if reciever.try_recv().unwrap_or(false) {
             break;
         }
@@ -183,39 +161,9 @@ fn server(reciever: Receiver<bool>) -> std::io::Result<Vec<schema::SearchRequest
             Err(_) => continue,
         }
     }
-    // for stream in listener.incoming() {
-    //     i += 1;
-    //     if i == 8 {
-    //         break;
-    //     }
-    //     match stream {
-    //         Ok(stream) => {
-    //             threads.push(thread::spawn(|| handle_client(stream)));
-    //         }
-    //         Err(err) => {
-    //             break;
-    //         }
-    //     }
-    // }
     let _results: Vec<schema::SearchRequest> = threads
         .into_iter()
         .map(|t| t.join().expect("Thread panicked"))
         .collect();
     Ok(_results)
-
-    // let mut compile_commands: Vec<CompileCommandsEntry> = Vec::new();
-    // for result in _results {
-    //     for file in extract_source(&result) {
-    //         compile_commands.push(CompileCommandsEntry {
-    //             directory: result.path.clone(),
-    //             command: result.args.join(" "),
-    //             file: file.to_string(),
-    //         });
-    //     }
-    // }
-    // let serialized = serde_json::to_string_pretty(&compile_commands).unwrap();
-
-    // // Prints serialized = {"x":1,"y":2}
-    // println!("serialized = {}", serialized);
-    // Ok(())
 }

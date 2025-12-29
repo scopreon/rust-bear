@@ -23,25 +23,7 @@ macro_rules! intercept {
                 let val = dlsym(RTLD_NEXT, format!("{}\0",stringify!($name)).as_bytes().as_ptr() as *const c_char);
             let function: Type = std::mem::transmute(val);
 
-            let com = Command::new($argv);
-            let mut connecton = match get_uds_connection() {
-                Ok(con) => con,
-                Err(_) => {
-                    return function($($arg),*);
-                }
-            };
-            let current_path = match env::current_dir() {
-                Ok(path) => path,
-                Err(_) => return function($($arg),*),
-            };
-
-            let val: schema::SearchRequest = schema::SearchRequest {
-                args: com.argv,
-                path: current_path.to_string_lossy().to_string(),
-            };
-
-            let _ = connecton.write_all(&val.encode_to_vec()[..]);
-            let _ = connecton.shutdown(std::net::Shutdown::Both);
+            let _ = send_command(Command::new($argv));
             function($($arg),*)
         }
     };
@@ -76,6 +58,19 @@ intercept!(
         capture(argv);
     }
 );
+
+fn send_command(command: Command) -> io::Result<()> {
+    let mut connecton = get_uds_connection()?;
+    let current_path = env::current_dir()?;
+    let val: schema::SearchRequest = schema::SearchRequest {
+        args: command.argv,
+        path: current_path.to_string_lossy().to_string(),
+    };
+
+    let _ = connecton.write_all(&val.encode_to_vec()[..])?;
+    let _ = connecton.shutdown(std::net::Shutdown::Both)?;
+    Ok(())
+}
 
 fn get_uds_connection() -> io::Result<UnixStream> {
     let path =
