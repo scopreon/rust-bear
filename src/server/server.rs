@@ -6,12 +6,14 @@ use std::io::Write;
 use std::os::unix::net::UnixListener;
 use std::os::unix::net::UnixStream;
 use std::path::Path;
-use std::process::Command;
+use std::path::PathBuf;
+use std::process;
 use std::sync::mpsc::{self, Receiver};
 use std::thread::{self, sleep};
 use std::time::Duration;
 use std::{env, fs};
 const SOURCE_HEADERS: &[&str] = &[".cpp", ".cxx", ".cc", ".c"];
+const CDYLIB_NAME: &str = "librust_bear_lib";
 
 fn extract_source(command: &schema::SearchRequest) -> Vec<&str> {
     let mut files: Vec<&str> = Vec::new();
@@ -72,19 +74,27 @@ struct CompileCommandsEntry {
     file: String,
 }
 
+fn get_socket_file() -> PathBuf {
+    Path::new("/tmp").join(format!("minibear_sock{}", process::id()))
+}
+
 fn main() -> std::io::Result<()> {
     let (tx, rx): (mpsc::Sender<bool>, mpsc::Receiver<bool>) = mpsc::channel();
     let handle = thread::spawn(|| server(rx));
     let args: Vec<String> = env::args().collect();
-    sleep(Duration::from_secs(2));
 
-    Command::new(&args[1])
+    let executable_path = env::current_exe().expect("Was not able to fetch current path");
+    let cdylib_path = executable_path
+        .parent()
+        .unwrap()
+        .join(format!("{}.so", CDYLIB_NAME));
+
+    sleep(Duration::from_secs(1));
+
+    process::Command::new(&args[1])
         .args(&args[2..])
-        // .stdin(Stdio::null())
-        // .stdout(Stdio::null())
-        // .stderr(Stdio::null())
-        .env("LD_PRELOAD", "/workspace/target/debug/librust_bear_lib.so")
-        .env("_MINIBEAR_SOCKET", "/workspace/mysock.sock")
+        .env("LD_PRELOAD", cdylib_path)
+        .env("_MINIBEAR_SOCKET", get_socket_file())
         .status()?;
     sleep(Duration::from_secs(2));
     let _ = tx.send(true);
@@ -142,7 +152,7 @@ fn main() -> std::io::Result<()> {
 }
 
 fn server(reciever: Receiver<bool>) -> std::io::Result<Vec<schema::SearchRequest>> {
-    let path = env::var("_MINIBEAR_SOCKET").expect("expecteed");
+    let path = get_socket_file();
 
     let _ = fs::remove_file(&path);
     let listener = UnixListener::bind(&path)?;
