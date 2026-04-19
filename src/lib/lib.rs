@@ -6,6 +6,17 @@ use std::ffi::CStr;
 use std::fmt;
 use std::io::{self, Write};
 use std::os::unix::net::UnixStream;
+use which::which;
+
+fn get_full_compiler_path(exec: &str) -> String {
+    match which(exec) {
+        Ok(path) => path
+            .to_str()
+            .map(|s| s.to_string())
+            .unwrap_or("default".to_string()),
+        Err(_) => "default".to_string(),
+    }
+}
 
 macro_rules! intercept {
     (
@@ -93,10 +104,17 @@ impl Command {
     unsafe fn new(commands: *const *mut c_char) -> Command {
         let mut data: Vec<String> = Vec::new();
         let mut pointer = commands;
+        let mut counter = 0;
         while !pointer.read().is_null() {
             let cstring = CStr::from_ptr(pointer.read());
-            data.push(cstring.to_string_lossy().into_owned());
+            if counter == 0 {
+                data.push(get_full_compiler_path(cstring.to_str().unwrap()));
+            } else {
+                data.push(cstring.to_string_lossy().into_owned());
+            }
+
             pointer = pointer.add(1);
+            counter += 1;
         }
 
         Command { argv: data }
