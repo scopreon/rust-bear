@@ -13,8 +13,8 @@ fn get_full_compiler_path(exec: &str) -> String {
         Ok(path) => path
             .to_str()
             .map(|s| s.to_string())
-            .unwrap_or("default".to_string()),
-        Err(_) => "default".to_string(),
+            .unwrap_or(exec.to_string()),
+        Err(_) => exec.to_string(),
     }
 }
 
@@ -108,7 +108,7 @@ impl Command {
         while !pointer.read().is_null() {
             let cstring = CStr::from_ptr(pointer.read());
             if counter == 0 {
-                data.push(get_full_compiler_path(cstring.to_str().unwrap()));
+                data.push(get_full_compiler_path(cstring.to_string_lossy().as_ref()));
             } else {
                 data.push(cstring.to_string_lossy().into_owned());
             }

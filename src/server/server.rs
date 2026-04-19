@@ -50,14 +50,14 @@ mod tests {
     }
 }
 
-fn handle_client(mut stream: UnixStream) -> schema::SearchRequest {
+fn handle_client(mut stream: UnixStream) -> Result<schema::SearchRequest, prost::DecodeError> {
     let mut buf = Vec::new();
     let _ = stream.read_to_end(&mut buf);
 
-    let req: schema::SearchRequest = schema::SearchRequest::decode(&buf[..]).unwrap();
+    let req: schema::SearchRequest = schema::SearchRequest::decode(&buf[..])?;
     println!("got: {:?}", req);
 
-    req
+    Ok(req)
 }
 
 // [
@@ -86,7 +86,7 @@ fn main() -> std::io::Result<()> {
     let executable_path = env::current_exe().expect("Was not able to fetch current path");
     let cdylib_path = executable_path
         .parent()
-        .unwrap()
+        .expect("Failed to find CDYLIB")
         .join(format!("{}.so", CDYLIB_NAME));
 
     sleep(Duration::from_secs(1));
@@ -140,7 +140,8 @@ fn main() -> std::io::Result<()> {
             });
         }
     }
-    let serialized = serde_json::to_string_pretty(&compile_commands).unwrap();
+    let serialized =
+        serde_json::to_string_pretty(&compile_commands).expect("Failed to serialize data.");
     let mut outfile = fs::OpenOptions::new()
         .write(true)
         .create(true)
@@ -166,7 +167,9 @@ fn server(reciever: Receiver<bool>) -> std::io::Result<Vec<schema::SearchRequest
         }
         match listener.accept() {
             Ok(stream) => {
-                threads.push(thread::spawn(|| handle_client(stream.0)));
+                threads.push(thread::spawn(|| {
+                    handle_client(stream.0).expect("Weird stuff happened")
+                }));
             }
             Err(_) => continue,
         }
