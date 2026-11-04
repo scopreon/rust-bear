@@ -14,7 +14,6 @@ use std::time::Duration;
 use std::{env, fs};
 use tempfile;
 const SOURCE_HEADERS: &[&str] = &[".cpp", ".cxx", ".cc", ".c"];
-const CDYLIB_NAME: &str = "librust_bear_lib";
 
 fn extract_source(command: &schema::SearchRequest) -> Vec<&str> {
     let mut files: Vec<&str> = Vec::new();
@@ -28,7 +27,7 @@ fn extract_source(command: &schema::SearchRequest) -> Vec<&str> {
     }
     files
 }
-#[link(name = ":thisshoudlbelinked.a", kind = "static")]
+
 unsafe extern "C" {
     static _binary___target_debug_librust_bear_lib_so_start: std::ffi::c_char;
     static _binary___target_debug_librust_bear_lib_so_end: std::ffi::c_char;
@@ -86,31 +85,17 @@ use std::slice;
 fn main() -> std::io::Result<()> {
     let mut f = tempfile::NamedTempFile::new()?;
     unsafe {
-        // println!("TEST {_binary___target_debug_librust_bear_lib_so_end}");
         let start = std::ptr::from_ref(&_binary___target_debug_librust_bear_lib_so_start);
         let end = std::ptr::from_ref(&_binary___target_debug_librust_bear_lib_so_end);
-        println!("{:p}", start);
-        println!("{:p}", end);
         let distance = end as usize - start as usize;
 
         let i = slice::from_raw_parts(start as *const u8, distance);
-        // fs::write("test.so", i)?;
         f.write(i)?;
-
-        // let c = char::from(_binary_mytestbinary_txt_start as u8);
-        // let my_string: String = i.iter().map(|x| char::from(*x as u8)).collect();
-
-        // println!("TEST {my_string}");
     }
     let (tx, rx): (mpsc::Sender<bool>, mpsc::Receiver<bool>) = mpsc::channel();
     let handle = thread::spawn(|| server(rx));
     let args: Vec<String> = env::args().collect();
 
-    // let executable_path = env::current_exe().expect("Was not able to fetch current path");
-    // let cdylib_path = executable_path
-    //     .parent()
-    //     .expect("Failed to find CDYLIB")
-    //     .join(format!("{}.so", CDYLIB_NAME));
     let cdylib_path = f.path();
 
     sleep(Duration::from_secs(1));
