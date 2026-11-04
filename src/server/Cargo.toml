@@ -1,9 +1,15 @@
 [package]
-name = "rust-bear-server"
-version = "0.1.0"
+name = "rust-bear"
+version = "0.2.0"
+authors = ["Saul Cooperman <saulcoops@gmail.com>"]
 edition = "2021"
 build = "build.rs"
+description = "Bear rust impl for learning"
 autobins = false
+license = "MIT"
+repository = "https://github.com/scopreon/rust-bear"
+readme = "README.md"
+categories = ["command-line-utilities"]
 
 [dependencies]
 prost = "0.14.1"
@@ -14,5 +20,5 @@ tempfile = "3.27.0"
 # protobuf-src = "2.1.1"
 
 [[bin]]
-name = "server"
+name = "rust-bear"
 path = "server.rs"
